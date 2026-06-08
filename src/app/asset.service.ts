@@ -1,52 +1,98 @@
-import { Injectable, signal } from '@angular/core';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from './firebase';
+import { Injectable, signal, inject } from '@angular/core';
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, serverTimestamp } from 'firebase/firestore';
+import { app } from '../main';
+import { AuthService } from './auth.service';
+import firebaseConfig from '../../firebase-applet-config.json';
 
-export interface Asset { id: string; acquiringNo: string; assetNumber: string; model: string; year: number; brand: string; serialNumber: string; department: string; subgroup: string; assignedUser: string; status: 'Available' | 'In Use' | 'Maintenance' | 'Broken'; type: string; lastMaintenanceDate: number; createdAt: number; updatedAt: number; }
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+export interface Asset {
+    id: string;
+    acquiringNo: string;
+    assetNumber: string;
+    model: string;
+    year: number;
+    brand: string;
+    serialNumber: string;
+    department: string;
+    subgroup: string;
+    assignedUser: string;
+    status: 'Available' | 'In Use' | 'Maintenance' | 'Broken';
+    type: 'Computer' | 'Printer' | 'Notebook' | 'Network' | 'Peripheral' | 'Other';
+    lastMaintenanceDate: number;
+    createdAt: number;
+    updatedAt: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AssetService {
-  assets = signal<Asset[]>([]);
-  loading = signal(true);
-  
-  constructor() {
-    if (typeof window !== 'undefined') {
-      onSnapshot(query(collection(db, 'assets')), (snapshot) => {
-        const result: Asset[] = [];
-        snapshot.forEach(doc => result.push({ id: doc.id, ...doc.data() } as Asset));
-        this.assets.set(result);
-        this.loading.set(false);
-      }, (error) => { console.error("Firestore Error:", error); this.loading.set(false); });
+    assets = signal<Asset[]>([]);
+    auth = inject(AuthService);
+
+    constructor() {
+        const q = query(collection(db, 'assets'));
+        onSnapshot(q, (snapshot) => {
+            const list: Asset[] = [];
+            snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() } as Asset));
+            this.assets.set(list.sort((a,b) => b.createdAt - a.createdAt));
+        }, (error) => {
+             console.error('Firestore Error:', error);
+        });
     }
-  }
 
-  async addAsset(asset: Omit<Asset, 'id' | 'createdAt' | 'updatedAt'>) {
-    const newRef = doc(collection(db, 'assets'));
-    await setDoc(newRef, { ...asset, id: newRef.id, createdAt: Date.now(), updatedAt: Date.now() });
-  }
-
-  async updateAsset(id: string, partial: Partial<Asset>) {
-    await updateDoc(doc(db, 'assets', id), { ...partial, updatedAt: Date.now() });
-  }
-
-  async deleteAsset(id: string) { await deleteDoc(doc(db, 'assets', id)); }
-  
-  async seedData() {
-     const initialData = [
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2254/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG1378NYS', department: 'กก.', subgroup: 'ก.1', assignedUser: 'กิติพงศ์', status: 'In Use', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2255/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG1378P81', department: 'กก.', subgroup: 'ก.1', assignedUser: 'ชัยภัค', status: 'Available', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2256/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG137BGPL', department: 'กก.', subgroup: 'ก.2', assignedUser: 'เกียรติศักดิ์', status: 'Maintenance', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2257/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG137BGGZ', department: 'กก.', subgroup: 'กลุ่ม 3', assignedUser: 'อนรรฆวี', status: 'In Use', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2258/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG137BGFZ', department: 'กก.', subgroup: 'ก.4', assignedUser: 'นวลนภา', status: 'In Use', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2259/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG137BGGN', department: 'กก.', subgroup: 'กลุ่ม 5', assignedUser: 'กลุ่ม 5', status: 'Broken', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2260/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG137BGG5', department: 'กก.', subgroup: 'ก.6', assignedUser: 'ก.6', status: 'In Use', type: 'Notebook', lastMaintenanceDate: Date.now() },
-       { acquiringNo: 'สซ.3/2565', assetNumber: 'สมอ.154/2261/65', model: '240 G8', year: 2565, brand: 'HP', serialNumber: '5CG1378NYY', department: 'กก.', subgroup: 'ก.7', assignedUser: 'กิตติยา', status: 'In Use', type: 'Notebook', lastMaintenanceDate: Date.now() }
-     ];
-     const batch = writeBatch(db);
-     for(const item of initialData) {
+    async addAsset(asset: Partial<Asset>) {
+        if (!this.auth.user()) return;
         const newRef = doc(collection(db, 'assets'));
-        batch.set(newRef, { ...item, id: newRef.id, createdAt: Date.now(), updatedAt: Date.now() });
-     }
-     await batch.commit();
-  }
+        const docData = {
+           ...asset,
+           id: newRef.id,
+           createdAt: Date.now(),
+           updatedAt: Date.now(),
+           lastMaintenanceDate: Date.now(),
+           acquiringNo: asset.acquiringNo || '',
+           brand: asset.brand || '',
+           model: asset.model || '',
+           serialNumber: asset.serialNumber || '',
+           department: asset.department || 'IT',
+           subgroup: asset.subgroup || '',
+           assignedUser: asset.assignedUser || '',
+        };
+        await setDoc(newRef, docData);
+    }
+
+    async updateAsset(id: string, partial: Partial<Asset>) {
+        if (!this.auth.user()) return;
+        const ref = doc(db, 'assets', id);
+        await setDoc(ref, { ...partial, updatedAt: Date.now() }, { merge: true });
+    }
+
+    async deleteAsset(id: string) {
+        if (!this.auth.user()) return;
+        const ref = doc(db, 'assets', id);
+        await deleteDoc(ref);
+    }
+    
+    async seedData() {
+        if (!this.auth.user()) return;
+        const samples: Partial<Asset>[] = [
+           { assetNumber: 'PC-2024-001', type: 'Computer', brand: 'Dell', model: 'OptiPlex 7090', serialNumber: 'DL001XYZ', department: 'IT', status: 'In Use', assignedUser: 'John Doe' },
+           { assetNumber: 'NB-2024-012', type: 'Notebook', brand: 'Apple', model: 'MacBook Pro 14"', serialNumber: 'MBP14ABC', department: 'Design', status: 'Available', assignedUser: '' },
+           { assetNumber: 'PR-2023-005', type: 'Printer', brand: 'HP', model: 'LaserJet Pro', serialNumber: 'HPL005', department: 'HR', status: 'Maintenance', assignedUser: '' },
+           { assetNumber: 'NT-2023-002', type: 'Network', brand: 'Cisco', model: 'Catalyst 9200', serialNumber: 'CS9200NW', department: 'IT', status: 'Broken', assignedUser: '' },
+           { assetNumber: 'PC-2024-002', type: 'Computer', brand: 'Lenovo', model: 'ThinkStation', serialNumber: 'LN10023', department: 'Engineering', status: 'In Use', assignedUser: 'Jane Smith' }
+        ];
+        
+        for (const s of samples) {
+             const newRef = doc(collection(db, 'assets'));
+             await setDoc(newRef, {
+                 ...s, id: newRef.id,
+                 createdAt: Date.now(),
+                 updatedAt: Date.now(),
+                 lastMaintenanceDate: Date.now(),
+                 acquiringNo: `ACQ-${Math.floor(Math.random()*1000)}`,
+                 subgroup: '',
+                 year: 2024
+             });
+        }
+    }
 }

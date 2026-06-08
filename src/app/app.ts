@@ -1,11 +1,11 @@
-import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
-import {AuthService} from './auth.service';
-import {Login} from './login';
-import {Dashboard} from './dashboard';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { AuthService } from './auth.service';
+import { Login } from './login';
+import { Dashboard } from './dashboard';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
   imports: [Login, Dashboard],
   template: `

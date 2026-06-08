@@ -12,7 +12,7 @@ import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angula
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [MatIconModule, DragDropModule, DatePipe, DecimalPipe, ReactiveFormsModule],
+  imports: [MatIconModule, DragDropModule, ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard.html',
 })

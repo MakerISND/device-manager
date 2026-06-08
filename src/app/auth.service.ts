@@ -1,40 +1,56 @@
 import { Injectable, signal } from '@angular/core';
-import { User, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { app } from '../main';
+import firebaseConfig from '../../firebase-applet-config.json';
 
-export interface UserProfile { uid: string; email: string; department: string; role: 'user' | 'admin'; }
+const auth = getAuth(app);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+export interface UserProfile {
+    email: string;
+    department: string;
+    role: 'user' | 'admin';
+    createdAt: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  user = signal<User | null>(null);
-  profile = signal<UserProfile | null>(null);
-  authLoading = signal(true);
-  
-  constructor() {
-    if (typeof window !== 'undefined') {
-      onAuthStateChanged(auth, async (u) => {
-        this.user.set(u);
-        if (u) {
-          const docRef = doc(db, 'users', u.uid);
-          try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              this.profile.set(docSnap.data() as UserProfile);
-            } else {
-              const defaultProfile: UserProfile = { uid: u.uid, email: u.email || '', department: 'กก.', role: 'admin' };
-              await setDoc(docRef, defaultProfile);
-              this.profile.set(defaultProfile);
-            }
-          } catch (error) { console.error("Error fetching user profile", error); }
-        } else {
-          this.profile.set(null);
-        }
-        this.authLoading.set(false);
-      });
-    }
-  }
+    user = signal<FirebaseUser | null>(null);
+    profile = signal<UserProfile | null>(null);
+    authLoading = signal(true);
 
-  async loginWithGoogle() { return signInWithPopup(auth, new GoogleAuthProvider()); }
-  async logout() { await signOut(auth); }
+    constructor() {
+        onAuthStateChanged(auth, async (u) => {
+            this.user.set(u);
+            if (u) {
+                const userRef = doc(db, 'users', u.uid);
+                const userDoc = await getDoc(userRef);
+                if (!userDoc.exists()) {
+                    const newProfile = {
+                        email: u.email!,
+                        department: 'IT',
+                        role: 'user',
+                        createdAt: Date.now()
+                    };
+                    await setDoc(userRef, newProfile);
+                    this.profile.set(newProfile as UserProfile);
+                } else {
+                    this.profile.set(userDoc.data() as UserProfile);
+                }
+            } else {
+                this.profile.set(null);
+            }
+            this.authLoading.set(false);
+        });
+    }
+
+    async loginWithGoogle() {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+    }
+    
+    async logout() {
+        await signOut(auth);
+    }
 }
