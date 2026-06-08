@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Asset": {
+      "title": "IT Asset",
+      "description": "Represents an IT asset like a computer or printer.",
+      "type": "object",
+      "properties": {
+        "acquiringNo": { "type": "string" },
+        "assetNumber": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "brand": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "department": { "type": "string" },
+        "subgroup": { "type": "string" },
+        "assignedUser": { "type": "string" },
+        "status": { "type": "string", "enum": ["Available", "In Use", "Maintenance", "Broken"] },
+        "type": { "type": "string", "enum": ["Computer", "Printer", "Notebook", "Network", "Peripheral", "Other"] },
+        "lastMaintenanceDate": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["assetNumber", "status", "type"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with role-based access.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "department": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Stores all IT assets."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user roles and departments."
+    }
+  }
+}
