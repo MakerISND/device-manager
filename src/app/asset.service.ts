@@ -1,10 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, serverTimestamp } from 'firebase/firestore';
-import { app } from '../main';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query } from 'firebase/firestore';
 import { AuthService } from './auth.service';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+import { db } from './firebase';
 
 export interface Asset {
     id: string;
