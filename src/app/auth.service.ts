@@ -1,10 +1,9 @@
 import { Injectable, signal } from '@angular/core';
-import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { signInAnonymously, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from './firebase';
 
 export interface UserProfile {
-    email: string;
+    email?: string;
     department: string;
     role: 'user' | 'admin';
     createdAt: number;
@@ -18,35 +17,42 @@ export class AuthService {
 
     constructor() {
         onAuthStateChanged(auth, async (u) => {
-            this.user.set(u);
-            if (u) {
-                const userRef = doc(db, 'users', u.uid);
-                const userDoc = await getDoc(userRef);
-                if (!userDoc.exists()) {
-                    const newProfile = {
-                        email: u.email!,
-                        department: 'IT',
-                        role: 'user',
-                        createdAt: Date.now()
-                    };
-                    await setDoc(userRef, newProfile);
-                    this.profile.set(newProfile as UserProfile);
-                } else {
-                    this.profile.set(userDoc.data() as UserProfile);
-                }
+            if (u && localStorage.getItem('app_pwd_auth') === 'true') {
+                this.user.set(u);
+                this.profile.set({
+                    department: 'IT',
+                    role: 'admin',
+                    createdAt: Date.now()
+                });
             } else {
+                this.user.set(null);
                 this.profile.set(null);
             }
             this.authLoading.set(false);
         });
+        
+        setTimeout(() => this.authLoading.set(false), 2000);
     }
 
-    async loginWithGoogle() {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+    async loginWithPassword(pwd: string) {
+        if (pwd === '543210') {
+            await signInAnonymously(auth);
+            localStorage.setItem('app_pwd_auth', 'true');
+            // Optimistically set to skip wait
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                this.user.set(currentUser);
+                this.profile.set({ department: 'IT', role: 'admin', createdAt: Date.now() });
+            }
+            return true;
+        }
+        return false;
     }
     
     async logout() {
+        localStorage.removeItem('app_pwd_auth');
         await signOut(auth);
+        window.location.reload();
     }
 }
+
