@@ -1,6 +1,8 @@
 {
-  "name": "",
-  "description": "",
+  "name": "IT Assets Manager",
+  "description": "An IT Assets Management dashboard with Firebase integration.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
